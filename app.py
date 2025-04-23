@@ -1,11 +1,10 @@
+%%writefile app.py
 import streamlit as st
 import requests
 
-# --- Config ---
-API_KEY = "your_together_api_key_here"  # Replace this!
+API_KEY = "38d6531b293afee64eb66fd256b9182b016b64235930677a513b69f65aaa2177"
 MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
-# --- Sample tracking data ---
 tracking_data = {
     "frame_15.jpg": {"position": [197, 125]},
     "frame_30.jpg": {"position": [315, 140]},
@@ -15,21 +14,19 @@ tracking_data = {
     "frame_90.jpg": {"position": [400, 160]},
 }
 
-# --- Prompt builder ---
-def build_prompt(question, tracking_data):
-    intro = (
-        "You are an AI soccer analyst. You are analyzing player movement across multiple video frames from a soccer match.\n"
-        "The following are the tracked positions of one player across time:\n\n"
-    )
-    frames = "".join([f"- {frame}: Position {info['position']}\n" for frame, info in tracking_data.items()])
-    return intro + frames + f"\n\nNow, based on these positions, answer the following:\n{question}"
+def build_prompt(question, data):
+    prompt = "You are an AI soccer analyst. These are tracked player positions:\n\n"
+    for frame, info in data.items():
+        prompt += f"- {frame}: Position {info['position']}\n"
+    prompt += f"\nAnswer this: {question}"
+    return prompt
 
-# --- API Caller ---
 def ask_ai(prompt):
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
+
     data = {
         "model": MODEL,
         "prompt": prompt[-2000:],
@@ -38,28 +35,19 @@ def ask_ai(prompt):
         "top_p": 0.9,
     }
 
-    response = requests.post("https://api.together.xyz/v1/completions", json=data, headers=headers)
+    r = requests.post("https://api.together.xyz/v1/completions", json=data, headers=headers)
 
     try:
-        result = response.json()
-        st.json(result)  # 🔍 Show raw response (optional)
-        return result["choices"][0]["text"].strip()
+        response_json = r.json()
+        return response_json["choices"][0]["text"].strip()
     except Exception as e:
-        st.error("⚠️ AI failed to respond. Check your model/API key or logs.")
-        st.code(response.text, language='json')  # Show full error response
-        return ""
+        return f"⚠️ API error: {e}\n\nFull response:\n```json\n{r.text}\n```"
 
-# --- UI ---
+# UI
 st.title("⚽ AI Soccer Player Analyzer")
-question = st.text_input("Ask a question about this player's movement:")
-
-if st.button("Analyze"):
-    if question.strip() == "":
-        st.warning("Please enter a question.")
-    else:
-        prompt = build_prompt(question, tracking_data)
-        with st.spinner("Thinking..."):
-            answer = ask_ai(prompt)
-            if answer:
-                st.success("✅ AI Response:")
-                st.write(answer)
+q = st.text_area("Ask an AI about a soccer player's movement.")
+if st.button("Ask AI"):
+    st.write("⏳ Thinking...")
+    prompt = build_prompt(q, tracking_data)
+    answer = ask_ai(prompt)
+    st.success(answer)
