@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-API_KEY = "your_together_api_key_here"
+API_KEY = "38d6531b293afee64eb66fd256b9182b016b64235930677a513b69f65aaa2177"
 MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 tracking_data = {
@@ -29,12 +29,19 @@ def ask_ai(prompt):
         "temperature": 0.7,
         "top_p": 0.9,
     }
-    r = requests.post("https://api.together.xyz/v1/completions", json=data, headers=headers)
-    return r.json()["choices"][0]["text"].strip()
+    response = requests.post("https://api.together.xyz/v1/completions", json=data, headers=headers)
+
+    try:
+        result = response.json()
+        print("✅ Together API result:", result)
+        return result["choices"][0]["text"].strip()
+    except Exception as e:
+        print("❌ API error:", response.text)
+        return "⚠️ AI failed to respond. Check your model/API key or logs for details."
 
 # UI
 st.title("⚽ AI Soccer Player Analyzer")
-q = st.text_area("Ask a question about this player's movement:")
+q = st.text_area("Ask an AI about a soccer player's movement.")
 if st.button("Ask AI"):
     st.write("⏳ Thinking...")
     prompt = build_prompt(q, tracking_data)
